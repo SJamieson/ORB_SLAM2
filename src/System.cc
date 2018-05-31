@@ -25,6 +25,9 @@
 #include <thread>
 #include <pangolin/pangolin.h>
 #include <iomanip>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
