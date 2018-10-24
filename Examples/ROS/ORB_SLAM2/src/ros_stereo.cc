@@ -23,12 +23,14 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
+#include<condition_variable>
 
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <std_msgs/Int64MultiArray.h>
 
 #include<opencv2/core/core.hpp>
 
@@ -58,18 +60,25 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings do_rectify" << endl;
         ros::shutdown();
         return 1;
-    }    
+    }
+
+    // TONI HACK DELETEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEeee
+    ORB_SLAM2::ToniHack kf_idx_1 (0, 0);
+    ORB_SLAM2::ToniHack kf_idx_1_copy (0, 0);
+    std::mutex toni_mtx;
+    std::condition_variable toni_cond_var;
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true,
+        &kf_idx_1, &toni_mtx, &toni_cond_var);
 
     ImageGrabber igb(&SLAM);
 
     stringstream ss(argv[3]);
-	ss >> boolalpha >> igb.do_rectify;
+  ss >> boolalpha >> igb.do_rectify;
 
     if(igb.do_rectify)
-    {      
+    {
         // Load settings related to stereo calibration
         cv::FileStorage fsSettings(argv[2], cv::FileStorage::READ);
         if(!fsSettings.isOpened())
@@ -115,7 +124,46 @@ int main(int argc, char **argv)
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
 
-    ros::spin();
+    ros::Publisher loop_closure_pub =
+        nh.advertise<std_msgs::Int64MultiArray>("loop_closure", 10);
+
+    // TONI HACKKKKK
+    bool updated = false;
+    while(ros::ok()) {
+      {
+        std::unique_lock<std::mutex> lk(toni_mtx);
+        //if (toni_cond_var.wait_for(lk, std::chrono::milliseconds(10)) ==
+        //    std::cv_status::no_timeout) {
+        //  // Read the variable.
+        //  std::cout << "GOT A LOOP CLOSURE!" << std::endl;
+        //  updated = true;
+        //  kf_idx_1_copy = kf_idx_1;
+        //} else {
+        //  updated = false;
+        //}
+        if (kf_idx_1.updated_) {
+          std::cout << "GOT A LOOP CLOSURE!" << std::endl;
+          updated = true;
+          kf_idx_1_copy = kf_idx_1;
+          kf_idx_1.updated_ = false;
+        } else {
+          updated = false;
+        }
+      }
+
+      // Continue doing whatever you want.
+      // Publish in ROS.
+      if (updated) {
+        std::cout << "Keyframe 1 " << kf_idx_1_copy.kf_idx_1_ << std::endl;
+        std::cout << "Keyframe 2 " << kf_idx_1_copy.kf_idx_2_ << std::endl;
+        std_msgs::Int64MultiArray msg;
+        msg.data.push_back(kf_idx_1_copy.kf_idx_1_);
+        msg.data.push_back(kf_idx_1_copy.kf_idx_2_);
+        loop_closure_pub.publish(msg);
+      }
+
+      ros::spinOnce();
+    }
 
     // Stop all threads
     SLAM.Shutdown();

@@ -40,6 +40,15 @@ class MapPoint;
 class Frame;
 class KeyFrameDatabase;
 
+struct ToniHackStruct {
+  ToniHackStruct(long unsigned int idx1, long unsigned int idx2)
+    : kf_idx_1_(idx1), kf_idx_2_(idx2) {}
+  long unsigned int kf_idx_1_;
+  long unsigned int kf_idx_2_;
+  bool updated_ = false;
+};
+typedef ToniHackStruct ToniHack;
+
 class KeyFrame
 {
 public:
@@ -222,7 +231,7 @@ protected:
     // Bad flags
     bool mbNotErase;
     bool mbToBeErased;
-    bool mbBad;    
+    bool mbBad;
 
     float mHalfBaseline; // Only for visualization
 

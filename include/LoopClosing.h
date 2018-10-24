@@ -31,6 +31,7 @@
 
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
 namespace ORB_SLAM2
@@ -45,13 +46,14 @@ class LoopClosing
 {
 public:
 
-    typedef pair<set<KeyFrame*>,int> ConsistentGroup;    
+    typedef pair<set<KeyFrame*>,int> ConsistentGroup;
     typedef map<KeyFrame*,g2o::Sim3,std::less<KeyFrame*>,
         Eigen::aligned_allocator<std::pair<const KeyFrame*, g2o::Sim3> > > KeyFrameAndPose;
 
 public:
 
-    LoopClosing(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale);
+    LoopClosing(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale,
+                ToniHack* kf, std::mutex* kf_mtx, std::condition_variable* cv);
 
     void SetTracker(Tracking* pTracker);
 
@@ -74,13 +76,14 @@ public:
     bool isFinishedGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);
         return mbFinishedGBA;
-    }   
+    }
 
     void RequestFinish();
 
     bool isFinished();
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 
 protected:
 
@@ -144,6 +147,11 @@ protected:
 
 
     bool mnFullBAIdx;
+
+    // TONI'S HACK to retrieve loop closures! DELETE DELETE
+    ToniHack* kf_;
+    std::mutex* kf_mtx_;
+    std::condition_variable* cv_;
 };
 
 } //namespace ORB_SLAM

@@ -35,10 +35,11 @@
 namespace ORB_SLAM2
 {
 
-LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale):
+LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale,
+                         ToniHack* kf, std::mutex* kf_mtx, std::condition_variable* cv):
     mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
-    mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0)
+    mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0), kf_(kf), kf_mtx_(kf_mtx), cv_(cv)
 {
     mnCovisibilityConsistencyTh = 3;
 }
@@ -74,7 +75,7 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
-        }       
+        }
 
         ResetIfRequested();
 
@@ -123,7 +124,8 @@ bool LoopClosing::DetectLoop()
     // We will impose loop candidates to have a higher similarity than this
     const vector<KeyFrame*> vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();
     const DBoW2::BowVector &CurrentBowVec = mpCurrentKF->mBowVec;
-    float minScore = 1;
+    /////////// HACK Lower the min score to get more loop closures.
+    float minScore = 0.2;
     for(size_t i=0; i<vpConnectedKeyFrames.size(); i++)
     {
         KeyFrame* pKF = vpConnectedKeyFrames[i];
@@ -148,6 +150,8 @@ bool LoopClosing::DetectLoop()
         mpCurrentKF->SetErase();
         return false;
     }
+
+    // Get the potential loop closures from here!
 
     // For each loop candidate check consistency with previous loop candidates
     // Each candidate expands a covisibility group (keyframes connected to the loop candidate in the covisibility graph)
@@ -221,6 +225,8 @@ bool LoopClosing::DetectLoop()
     }
     else
     {
+        // Get the Current Kf and pCandidateKf index!
+        // At this point, these are the ones being in loop closure mode!.
         return true;
     }
 
@@ -330,6 +336,17 @@ bool LoopClosing::ComputeSim3()
                 {
                     bMatch = true;
                     mpMatchedKF = pKF;
+
+                    // HAAAAAAAAAAAAAAAAAAAAAAACKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+                    // TONI HACK
+                    {
+                      std::lock_guard<std::mutex> lk(*kf_mtx_);
+                      kf_->kf_idx_1_ = mpCurrentKF->mnFrameId;
+                      kf_->kf_idx_2_ = mpMatchedKF->mnFrameId;
+                      kf_->updated_ = true;
+                    }
+                    cv_->notify_all();
+
                     g2o::Sim3 gSmw(Converter::toMatrix3d(pKF->GetRotation()),Converter::toVector3d(pKF->GetTranslation()),1.0);
                     mg2oScw = gScm*gSmw;
                     mScw = Converter::toCvMat(mg2oScw);
@@ -579,9 +596,9 @@ void LoopClosing::CorrectLoop()
     mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this,mpCurrentKF->mnId);
 
     // Loop closed. Release Local Mapping.
-    mpLocalMapper->Release();    
+    mpLocalMapper->Release();
 
-    mLastLoopKFid = mpCurrentKF->mnId;   
+    mLastLoopKFid = mpCurrentKF->mnId;
 }
 
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
@@ -734,7 +751,7 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
                     pMP->SetWorldPos(Rwc*Xc+twc);
                 }
-            }            
+            }
 
             mpMap->InformNewBigChange();
 

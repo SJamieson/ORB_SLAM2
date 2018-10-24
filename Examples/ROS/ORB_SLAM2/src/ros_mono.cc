@@ -31,6 +31,8 @@
 
 #include"../../../include/System.h"
 
+#include "include/KeyFrame.h"
+
 using namespace std;
 
 class ImageGrabber
@@ -43,6 +45,7 @@ public:
     ORB_SLAM2::System* mpSLAM;
 };
 
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "Mono");
@@ -50,20 +53,39 @@ int main(int argc, char **argv)
 
     if(argc != 3)
     {
-        cerr << endl << "Usage: rosrun ORB_SLAM2 Mono path_to_vocabulary path_to_settings" << endl;        
+        cerr << endl << "Usage: rosrun ORB_SLAM2 Mono path_to_vocabulary path_to_settings" << endl;
         ros::shutdown();
         return 1;
-    }    
+    }
+
+    // TONI HACKKKKK
+    ORB_SLAM2::ToniHack kf_idx_1;
+    ORB_SLAM2::ToniHack kf_idx_1_copy;
+    std::mutex toni_mtx;
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true,
+        &kf_idx_1, &toni_mtx);
 
     ImageGrabber igb(&SLAM);
 
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
 
-    ros::spin();
+    // TONI HACKKKKK
+    while(ros::ok()) {
+      {
+        std::lock_guard<std::mutex> lk(toni_mtx);
+        // Read the variable.
+        kf_idx_1_copy = kf_idx_1;
+      }
+
+      // Continue doing whatever you want.
+      // Publish in ROS.
+      std::cout << kf_idx_1_copy;
+
+      ros::spinOnce();
+    }
 
     // Stop all threads
     SLAM.Shutdown();

@@ -117,7 +117,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
             maxCommonWords=(*lit)->mnLoopWords;
     }
 
-    int minCommonWords = maxCommonWords*0.8f;
+    int minCommonWords = maxCommonWords*0.2f;
 
     int nscores=0;
 
@@ -173,7 +173,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
     }
 
     // Return all those keyframes with a score higher than 0.75*bestScore
-    float minScoreToRetain = 0.75f*bestAccScore;
+    float minScoreToRetain = 0.25f*bestAccScore;
 
     set<KeyFrame*> spAlreadyAddedKF;
     vector<KeyFrame*> vpLoopCandidates;
@@ -232,7 +232,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
             maxCommonWords=(*lit)->mnRelocWords;
     }
 
-    int minCommonWords = maxCommonWords*0.8f;
+    int minCommonWords = maxCommonWords*0.2f;
 
     list<pair<float,KeyFrame*> > lScoreAndMatch;
 
@@ -287,7 +287,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     }
 
     // Return all those keyframes with a score higher than 0.75*bestScore
-    float minScoreToRetain = 0.75f*bestAccScore;
+    float minScoreToRetain = 0.25f*bestAccScore;
     set<KeyFrame*> spAlreadyAddedKF;
     vector<KeyFrame*> vpRelocCandidates;
     vpRelocCandidates.reserve(lAccScoreAndMatch.size());
