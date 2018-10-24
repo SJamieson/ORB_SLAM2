@@ -90,11 +90,10 @@ ${LIBS}
 )
 
 # Node for RGB-D camera
-#rosbuild_add_executable(RGBD
-#src/ros_rgbd.cc
-#)
-#
-#target_link_libraries(RGBD
-#${LIBS}
-#)
+rosbuild_add_executable(RGBD
+src/ros_rgbd.cc
+)
 
+target_link_libraries(RGBD
+${LIBS}
+)
