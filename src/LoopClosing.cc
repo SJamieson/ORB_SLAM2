@@ -41,7 +41,7 @@ LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, 
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
     mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0), kf_(kf), kf_mtx_(kf_mtx), cv_(cv)
 {
-    mnCovisibilityConsistencyTh = 3;
+    mnCovisibilityConsistencyTh = 1;
 }
 
 void LoopClosing::SetTracker(Tracking *pTracker)
@@ -332,20 +332,24 @@ bool LoopClosing::ComputeSim3()
                 const int nInliers = Optimizer::OptimizeSim3(mpCurrentKF, pKF, vpMapPointMatches, gScm, 10, mbFixScale);
 
                 // If optimization is succesful stop ransacs and continue
-                if(nInliers>=20)
+                if(nInliers>=10)
                 {
                     bMatch = true;
                     mpMatchedKF = pKF;
 
                     // HAAAAAAAAAAAAAAAAAAAAAAACKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
                     // TONI HACK
-                    {
+                    if (kf_mtx_ != nullptr) {
                       std::lock_guard<std::mutex> lk(*kf_mtx_);
-                      kf_->kf_idx_1_ = mpCurrentKF->mnFrameId;
-                      kf_->kf_idx_2_ = mpMatchedKF->mnFrameId;
-                      kf_->updated_ = true;
+                      if (kf_ != nullptr) {
+                        kf_->kf_idx_1_ = mpCurrentKF->mnFrameId;
+                        kf_->kf_idx_2_ = mpMatchedKF->mnFrameId;
+                        kf_->updated_ = true;
+                      }
                     }
-                    cv_->notify_all();
+                    if (kf_mtx_ != nullptr && cv_ != nullptr) {
+                      cv_->notify_all();
+                    }
 
                     g2o::Sim3 gSmw(Converter::toMatrix3d(pKF->GetRotation()),Converter::toVector3d(pKF->GetTranslation()),1.0);
                     mg2oScw = gScm*gSmw;
@@ -399,7 +403,7 @@ bool LoopClosing::ComputeSim3()
             nTotalMatches++;
     }
 
-    if(nTotalMatches>=40)
+    if(nTotalMatches>=10)
     {
         for(int i=0; i<nInitialCandidates; i++)
             if(mvpEnoughConsistentCandidates[i]!=mpMatchedKF)

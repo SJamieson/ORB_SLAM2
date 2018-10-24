@@ -132,15 +132,6 @@ int main(int argc, char **argv)
     while(ros::ok()) {
       {
         std::unique_lock<std::mutex> lk(toni_mtx);
-        //if (toni_cond_var.wait_for(lk, std::chrono::milliseconds(10)) ==
-        //    std::cv_status::no_timeout) {
-        //  // Read the variable.
-        //  std::cout << "GOT A LOOP CLOSURE!" << std::endl;
-        //  updated = true;
-        //  kf_idx_1_copy = kf_idx_1;
-        //} else {
-        //  updated = false;
-        //}
         if (kf_idx_1.updated_) {
           std::cout << "GOT A LOOP CLOSURE!" << std::endl;
           updated = true;
