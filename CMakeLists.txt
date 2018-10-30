@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.2)
 project(ORB_SLAM2)
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -39,11 +39,20 @@ endif()
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 
+### Include the add external project command.
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+### Include the gflags directory
+include(${PROJECT_SOURCE_DIR}/cmake_modules/gflags.cmake)
+### Include the glog directory
+include(${PROJECT_SOURCE_DIR}/cmake_modules/glog.cmake)
+
 include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
+${GLOG_INCLUDE_DIRS}
+${GFLAGS_INCLUDE_DIRS}
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -76,10 +85,16 @@ ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+${GFLAGS_LIBRARIES}
+${GLOG_LIBRARIES}
 )
 
-# Build examples
+# Make sure we build all external dependencies first
+if (DEFINED external_project_dependencies)
+  add_dependencies(${PROJECT_NAME} ${external_project_dependencies})
+endif()
 
+# Build examples
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
 
 add_executable(rgbd_tum

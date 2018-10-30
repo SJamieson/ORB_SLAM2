@@ -42,12 +42,21 @@ find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(Boost COMPONENTS system)
 
+### Include the add external project command.
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+### Include the gflags directory
+include(${PROJECT_SOURCE_DIR}/../../../cmake_modules/gflags.cmake)
+### Include the glog directory
+include(${PROJECT_SOURCE_DIR}/../../../cmake_modules/glog.cmake)
+
 include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/../../../
 ${PROJECT_SOURCE_DIR}/../../../include
 ${Pangolin_INCLUDE_DIRS}
 ${Boost_INCLUDE_DIRS}
+${GFLAGS_INCLUDE_DIRS}
+${GLOG_INCLUDE_DIRS}
 )
 
 set(LIBS
@@ -58,13 +67,15 @@ ${Boost_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/g2o/lib/libg2o.so
 ${PROJECT_SOURCE_DIR}/../../../lib/libORB_SLAM2.so
+${GFLAGS_LIBRARIES}
+${GLOG_LIBRARIES}
 )
 
 # Node for monocular camera
 #rosbuild_add_executable(Mono
 #src/ros_mono.cc
 #)
-#
+
 #target_link_libraries(Mono
 #${LIBS}
 #)
@@ -89,11 +100,24 @@ target_link_libraries(Stereo
 ${LIBS}
 )
 
+# Make sure we build all external dependencies first
+if (DEFINED external_project_dependencies)
+  #add_dependencies(Mono ${external_project_dependencies})
+  add_dependencies(Stereo ${external_project_dependencies})
+endif()
+
 # Node for RGB-D camera
 rosbuild_add_executable(RGBD
 src/ros_rgbd.cc
 )
 
+# Make sure we build all external dependencies first
+if (DEFINED external_project_dependencies)
+  #add_dependencies(Mono ${external_project_dependencies})
+  add_dependencies(RGBD ${external_project_dependencies})
+endif()
+
 target_link_libraries(RGBD
 ${LIBS}
 )
+
