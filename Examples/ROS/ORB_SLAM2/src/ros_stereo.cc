@@ -25,6 +25,9 @@
 #include<chrono>
 #include<condition_variable>
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
@@ -35,6 +38,8 @@
 #include<opencv2/core/core.hpp>
 
 #include"../../../include/System.h"
+
+DEFINE_bool(use_viewer, true, "Enable visualization.");
 
 using namespace std;
 
@@ -52,7 +57,12 @@ public:
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "RGBD");
+  // Initialize Google's flags library.
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  // Initialize Google's logging library.
+  google::InitGoogleLogging(argv[0]);
+
+  ros::init(argc, argv, "RGBD");
     ros::start();
 
     if(argc != 4)
@@ -69,7 +79,7 @@ int main(int argc, char **argv)
     std::condition_variable toni_cond_var;
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true,
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,FLAGS_use_viewer,
         &kf_idx_1, &toni_mtx, &toni_cond_var);
 
     ImageGrabber igb(&SLAM);
