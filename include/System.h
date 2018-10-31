@@ -22,11 +22,11 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
+#include<unistd.h>
 #include<string>
 #include<thread>
 #include<condition_variable>
 #include<opencv2/core/core.hpp>
-#include<unistd.h>
 
 #include "Tracking.h"
 #include "FrameDrawer.h"
