@@ -26,6 +26,11 @@
 #include <pangolin/pangolin.h>
 #include <iomanip>
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
+DEFINE_bool(detect_loop_closures, true, "Enable loop closing.");
+
 namespace ORB_SLAM2
 {
 
@@ -94,7 +99,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR,
                                    kf, mtx, cv);
-    mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+    if (FLAGS_detect_loop_closures) {
+      mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+    }
 
     //Initialize the Viewer thread and launch
     if(bUseViewer)
