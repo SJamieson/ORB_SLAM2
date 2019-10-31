@@ -67,10 +67,12 @@ void LoopClosing::Run()
             // Detect loop candidates and check covisibility consistency
             if(DetectLoop())
             {
+              std::cout << "Initial loop detection!" << std::endl;
                // Compute similarity transformation [sR|t]
                // In the stereo/RGBD case s=1
                if(ComputeSim3())
                {
+                 std::cout << "Loop accepted!!" << std::endl;
                    // Perform loop fusion and pose graph optimization
                    CorrectLoop();
                }
@@ -114,6 +116,7 @@ bool LoopClosing::DetectLoop()
     //If the map contains less than 10 KF or less than 10 KF have passed from last loop detection
     if(mpCurrentKF->mnId<mLastLoopKFid+10)
     {
+//      std::cout << "Fail due to lack of keypoints." << std::endl;
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
         return false;
@@ -148,7 +151,8 @@ bool LoopClosing::DetectLoop()
         mpKeyFrameDB->add(mpCurrentKF);
         mvConsistentGroups.clear();
         mpCurrentKF->SetErase();
-        return false;
+//        std::cout << "Fail due to lack of candidate matches." << std::endl;
+      return false;
     }
 
     // Get the potential loop closures from here!
@@ -221,6 +225,7 @@ bool LoopClosing::DetectLoop()
     if(mvpEnoughConsistentCandidates.empty())
     {
         mpCurrentKF->SetErase();
+//        std::cout << "Fail due to lack of consistent candidates." << std::endl;
         return false;
     }
     else
@@ -230,6 +235,7 @@ bool LoopClosing::DetectLoop()
         return true;
     }
 
+//    std::cout << "Fail due to an impossible sequence of events." << std::endl;
     mpCurrentKF->SetErase();
     return false;
 }
@@ -254,7 +260,9 @@ bool LoopClosing::ComputeSim3()
     vbDiscarded.resize(nInitialCandidates);
 
     int nCandidates=0; //candidates with enough matches
+    std::string failure_reason = "";
 
+    int max_matches = 0;
     for(int i=0; i<nInitialCandidates; i++)
     {
         KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
@@ -264,14 +272,18 @@ bool LoopClosing::ComputeSim3()
 
         if(pKF->isBad())
         {
+            failure_reason = (failure_reason.empty()) ? "bad keyframes" : failure_reason;
             vbDiscarded[i] = true;
             continue;
         }
 
         int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
 
-        if(nmatches<20)
+        int const nrequired = 9;
+        if(nmatches<nrequired)
         {
+            failure_reason = (nmatches > max_matches) ? "insufficient candidate matches (max " + std::to_string(nmatches) + ", needed " + std::to_string(nrequired) + ")" : failure_reason;
+            max_matches = max(nmatches, max_matches);
             vbDiscarded[i] = true;
             continue;
         }
@@ -286,6 +298,7 @@ bool LoopClosing::ComputeSim3()
     }
 
     bool bMatch = false;
+    if (nCandidates == 0) failure_reason = (failure_reason.empty()) ? "no candidate matches" : failure_reason;
 
     // Perform alternatively RANSAC iterations for each candidate
     // until one is succesful or all fail
@@ -293,8 +306,9 @@ bool LoopClosing::ComputeSim3()
     {
         for(int i=0; i<nInitialCandidates; i++)
         {
-            if(vbDiscarded[i])
+            if(vbDiscarded[i]) {
                 continue;
+            }
 
             KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
 
@@ -304,11 +318,13 @@ bool LoopClosing::ComputeSim3()
             bool bNoMore;
 
             Sim3Solver* pSolver = vpSim3Solvers[i];
-            cv::Mat Scm  = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
+            int const max_iterations = 5;
+            cv::Mat Scm  = pSolver->iterate(max_iterations,bNoMore,vbInliers,nInliers);
 
             // If Ransac reachs max. iterations discard keyframe
             if(bNoMore)
             {
+                failure_reason = "RANSAC hit max iterations (" + std::to_string(max_iterations) + ")";
                 vbDiscarded[i]=true;
                 nCandidates--;
             }
@@ -357,13 +373,18 @@ bool LoopClosing::ComputeSim3()
 
                     mvpCurrentMatchedPoints = vpMapPointMatches;
                     break;
+                } else {
+                  failure_reason = "too few inliers";
                 }
+            } else {
+              failure_reason = "unknown RANSAC failure";
             }
         }
     }
 
     if(!bMatch)
     {
+      std::cout << "Loop closure failed - " << failure_reason << std::endl;
         for(int i=0; i<nInitialCandidates; i++)
              mvpEnoughConsistentCandidates[i]->SetErase();
         mpCurrentKF->SetErase();
@@ -412,6 +433,7 @@ bool LoopClosing::ComputeSim3()
     }
     else
     {
+      std::cout << "Failed due to insufficient matches." << std::endl;
         for(int i=0; i<nInitialCandidates; i++)
             mvpEnoughConsistentCandidates[i]->SetErase();
         mpCurrentKF->SetErase();
