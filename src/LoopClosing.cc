@@ -67,12 +67,12 @@ void LoopClosing::Run()
             // Detect loop candidates and check covisibility consistency
             if(DetectLoop())
             {
-              std::cout << "Initial loop detection!" << std::endl;
+//              std::cout << "Initial loop detection!" << std::endl;
                // Compute similarity transformation [sR|t]
                // In the stereo/RGBD case s=1
                if(ComputeSim3())
                {
-                 std::cout << "Loop accepted!!" << std::endl;
+//                 std::cout << "Loop accepted!!" << std::endl;
                    // Perform loop fusion and pose graph optimization
                    CorrectLoop();
                }
@@ -282,7 +282,7 @@ bool LoopClosing::ComputeSim3()
         int const nrequired = 9;
         if(nmatches<nrequired)
         {
-            failure_reason = (nmatches > max_matches) ? "insufficient candidate matches (max " + std::to_string(nmatches) + ", needed " + std::to_string(nrequired) + ")" : failure_reason;
+            failure_reason = (nmatches > max_matches) ? "insufficient candidate matches ( " + std::to_string(nmatches) + ", needed " + std::to_string(nrequired) + ")" : failure_reason;
             max_matches = max(nmatches, max_matches);
             vbDiscarded[i] = true;
             continue;
@@ -290,7 +290,7 @@ bool LoopClosing::ComputeSim3()
         else
         {
             Sim3Solver* pSolver = new Sim3Solver(mpCurrentKF,pKF,vvpMapPointMatches[i],mbFixScale);
-            pSolver->SetRansacParameters(0.99,20,300);
+            pSolver->SetRansacParameters(0.98,nrequired,300);
             vpSim3Solvers[i] = pSolver;
         }
 
@@ -318,7 +318,7 @@ bool LoopClosing::ComputeSim3()
             bool bNoMore;
 
             Sim3Solver* pSolver = vpSim3Solvers[i];
-            int const max_iterations = 5;
+            int const max_iterations = 10;
             cv::Mat Scm  = pSolver->iterate(max_iterations,bNoMore,vbInliers,nInliers);
 
             // If Ransac reachs max. iterations discard keyframe
@@ -377,7 +377,7 @@ bool LoopClosing::ComputeSim3()
                   failure_reason = "too few inliers";
                 }
             } else {
-              failure_reason = "unknown RANSAC failure";
+              failure_reason = "RANSAC failed to find transform";
             }
         }
     }
