@@ -272,17 +272,17 @@ bool LoopClosing::ComputeSim3()
 
         if(pKF->isBad())
         {
-            failure_reason = (failure_reason.empty()) ? "bad keyframes" : failure_reason;
+            failure_reason = (failure_reason.empty()) ? "bad candidate keyframe(s)" : failure_reason;
             vbDiscarded[i] = true;
             continue;
         }
 
         int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
 
-        int const nrequired = 9;
+        int const nrequired = 10;
         if(nmatches<nrequired)
         {
-            failure_reason = (nmatches > max_matches) ? "insufficient candidate matches ( " + std::to_string(nmatches) + ", needed " + std::to_string(nrequired) + ")" : failure_reason;
+            failure_reason = (nmatches > max_matches) ? "insufficient candidate feature matches (max " + std::to_string(nmatches) + ", needed " + std::to_string(nrequired) + ")" : failure_reason;
             max_matches = max(nmatches, max_matches);
             vbDiscarded[i] = true;
             continue;
@@ -298,7 +298,7 @@ bool LoopClosing::ComputeSim3()
     }
 
     bool bMatch = false;
-    if (nCandidates == 0) failure_reason = (failure_reason.empty()) ? "no candidate matches" : failure_reason;
+    if (nCandidates == 0) failure_reason = (failure_reason.empty()) ? "no candidates" : failure_reason;
 
     // Perform alternatively RANSAC iterations for each candidate
     // until one is succesful or all fail
