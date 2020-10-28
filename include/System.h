@@ -27,6 +27,7 @@
 #include<thread>
 #include<condition_variable>
 #include<opencv2/core/core.hpp>
+#include<unistd.h>
 
 #include "Tracking.h"
 #include "FrameDrawer.h"
